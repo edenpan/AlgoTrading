@@ -29,7 +29,7 @@ def get_price(code):
     updated_time = str(up_date)[0:10]
 
     summary_data.update({'Date':updated_time})
-        
+    summary_data.update({'Symbol':code})    
     summary_table = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"B")]')
     quote_price = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"A")]//span[contains(@class,"Price")]//text()')
 
