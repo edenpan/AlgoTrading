@@ -54,7 +54,7 @@ def get_price(code):
     updated_time = str(up_date)[0:10]
 
     summary_data.update({'Date':updated_time})
-
+    summary_data.update({'Symbol':code})
     for i in range(0,15,1):
         value = market_data[i]
         if value == '-':
