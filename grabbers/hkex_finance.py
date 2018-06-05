@@ -71,7 +71,7 @@ if __name__=="__main__":
     args = argparser.parse_args()
     
     code = args.code  
-    summary_data = get_price(code)
+    summary_data = get_price(code.lstrip('0'))
     updated_time = summary_data['Date']
 
     price_data = pd.DataFrame.from_dict(summary_data, orient='index').T 
