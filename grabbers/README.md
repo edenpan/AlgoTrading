@@ -1,8 +1,12 @@
-Grabbers
+HK Market Grabbers
 =
-1.All grabbers are based on python 2.7 and focus on Hong Kong market.       
+A series of grabbers to scrape market data from different sources, for one stock or a list of stocks (like HSI).
+Notes:
+1.The code is based on python 2.7.
+2.Please avoid non-business days and market-opening hours to run the scripts.
 2.All missing values after scraping are replaced with N/A.      
-3.All stock codes are using 4-digits.       
+3.For one stock, please use its 4-digits code as input.   
+4.Index components code is from Bloomberg.
 
 Google finance
 -
