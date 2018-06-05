@@ -23,7 +23,7 @@ def get_price(code):
 
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
-
+    summary_data.update({'Symbol':code})
     quote1 = parser.xpath('//div[contains(@id,"entity-summary")]/div/g-card-section/div/g-card-section/div/span[1]//text()')
     summary_data.update({'Nominal price' : str(quote1[0]).strip()})
 
