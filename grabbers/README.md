@@ -29,9 +29,11 @@ Date|Symbol|Nominal price|Previous Close|Open|Bid|Ask
 
 Etnet
 -
-To scrape etnet finance market data, run etnet_finance_market.py in your terminal:   
-`python etnet_finance_market.py 0700` 
-
+To scrape etnet finance market data for one stock, run etnet_finance_market.py in your terminal:   
+`python etnet_finance_market.py 0700`       
+To further get HSI components market data, simply run etnet_finance_HSI.py:     
+`python etnet_finance_HSI.py` 
+        
 Example output:
 
 Date|Symbol|Nominal price|High|Share Tr|Prev Close|1 Month High|MKT Cap|Low|Turnover|Open
