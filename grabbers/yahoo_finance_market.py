@@ -22,6 +22,7 @@ def get_price(code):
 
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
+    summary_data.update({'Symbol':code[0:4]})
     summary_data.update({'Nominal price':str(quote_price[0])})
 
     for table_data in summary_table:
