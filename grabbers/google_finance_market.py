@@ -24,9 +24,13 @@ def get_price(code):
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
     summary_data.update({'Symbol':code})
-    quote1 = parser.xpath('//div[contains(@id,"entity-summary")]/div/g-card-section/div/g-card-section/div/span[1]//text()')
-    summary_data.update({'Nominal price' : str(quote1[0]).strip()})
-
+    quote = parser.xpath('//div[contains(@id,"entity-summary")]/div/g-card-section/div/g-card-section/div/span[1]//text()')
+    
+    if len(quote) > 0:
+    	summary_data.update({'Nominal price' : str(quote[0]).strip()})
+    else:
+      summary_data.update({'Nominal price' : '-'})
+         
     price = parser.xpath('//div[contains(@id,"entity-summary")]/div/div[1]/g-card-section[2]/div/div//text()')
     headers = ['Open', 'High', 'Low', 'Mkt cap', 'P/E ratio', 'Div yield', 'Prev close', '52-wk high', '52-wk low']
 
