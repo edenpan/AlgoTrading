@@ -30,13 +30,15 @@ def get_price(code):
     price = parser.xpath('//div[contains(@id,"entity-summary")]/div/div[1]/g-card-section[2]/div/div//text()')
     headers = ['Open', 'High', 'Low', 'Mkt cap', 'P/E ratio', 'Div yield', 'Prev close', '52-wk high', '52-wk low']
 
-    for i in range(1,19,2):
-        value = str(price[i]).strip()
-        if value == '-':
-            value = 'N/A'    
-    
-        summary_data.update({headers[(i-1)/2] : value})
-
+    summary_data.update({headers[0] : str(price[1]).strip()})
+    summary_data.update({headers[1] : str(price[3]).strip()})
+    summary_data.update({headers[2] : str(price[5]).strip()})
+    summary_data.update({headers[3] : str(price[7]).strip()})
+    summary_data.update({headers[4] : str(price[9]).strip()})
+    summary_data.update({headers[5] : str(price[11]).strip()})
+    summary_data.update({headers[6] : str(price[13]).strip()})
+    summary_data.update({headers[7] : str(price[15]).strip()})
+    summary_data.update({headers[8] : str(price[17]).strip()})
   
     return summary_data
 
