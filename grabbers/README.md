@@ -52,7 +52,7 @@ Date|Symbol|Nominal price|High|Share Tr|Prev Close|1 Month High|MKT Cap|Low|Turn
 HKEX
 -
 To scrape HKEX market data, run hkex_finance.py in your terminal:   
-`python hkex_finance.py 0700` 
+`python hkex_finance.py 0700`       
 To further get HSI components market data, simply run hkex_HSI.py:          
 `python hkex_HSI.py` 
 
@@ -65,9 +65,11 @@ Date|Symbol|Nominal Price|Prev close|Open|Turnover|Volume|Mkt cap|Bid|Ask|EPS(RM
 
 Quandl
 -
-To use Quandl API, run quandl_finance.py in your terminal:      
+To use Quandl API, please install Quandl package:       
+`conda install quandl` or `pip install quandl`      
+then run quandl_finance.py in your terminal:      
 `python quandl_finance.py 0700 2018-06-05 --days 5`         
-days is optional parameter, which means the data horizon you needs (up to 4 years). It will skip non-business days.
+days is optional parameter, which means the data horizon you needs (up to 4 years). It will skip non-business day.
 
 Example output:
         
