@@ -14,7 +14,7 @@ from datetime import datetime
 
 def get_price(code):
    
-    url = "https://www.google.com/finance?q=%s"%(code)
+    url = "https://www.google.com/finance?q=HKG:%s"%(code)
 
     response = requests.get(url,headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"})
     parser = html.fromstring(response.text)
