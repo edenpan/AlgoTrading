@@ -11,7 +11,9 @@ Notes:
 Google finance
 -
 To scrape google finance market data, run google_finance_market.py in your terminal:   
-`python google_finance_market.py 0700`    
+`python google_finance_market.py 0700`      
+To further get HSI components market data, simply run google_finance_HSI.py:     
+`python google_finance_HSI.py`
 
 Example output:  
     
@@ -22,7 +24,9 @@ Date|Symbol|Nominal price|Open|High|Low|Mkt cap|P/E ratio|Div yield|Prev close
 Yahoo finance
 -
 To scrape yahoo finance market data, run yahoo_finance_market.py in your terminal:   
-`python yahoo_finance_market.py 0700` 
+`python yahoo_finance_market.py 0700`       
+To further get HSI components market data, simply run yahoo_finance_HSI.py:     
+`python yahoo_finance_HSI.py`
 
 Example output:
         
@@ -49,6 +53,8 @@ HKEX
 -
 To scrape HKEX market data, run hkex_finance.py in your terminal:   
 `python hkex_finance.py 0700` 
+To further get HSI components market data, simply run hkex_HSI.py:          
+`python hkex_HSI.py` 
 
 Example output:
         
