@@ -1,13 +1,14 @@
 HK Market Grabbers
 =
 A series of grabbers to scrape market data from different sources, for one stock or a list of stocks (like HSI).        
+---
 Notes:      
-1.The code is based on python 2.7, although python 3.X is better to handle encoding problem.        
-2.Please avoid non-business days or market-opening hours to run the scripts.        
-2.All missing values after scraping are replaced with N/A, except fot Google finance with '-'.       
-3.For one stock, please use its 4-digits code as input.     
-4.Fox Heng Seng index, components code is from Bloomberg.       
-5.Python Requests and LXML are needed. You can use pip or conda to install them.        
+1. The code is based on python 2.7, although python 3.X is better to handle encoding problem.        
+2. Please avoid non-business days or market-opening hours to run the scripts.        
+2. All missing values after scraping are replaced with N/A, except fot Google finance with '-'.       
+3. For one stock, please use its 4-digits code as input.     
+4. Fox Heng Seng index, components code is from Bloomberg.       
+5. Python Requests and LXML are needed. You can use pip or conda to install them.        
 
 
 Google finance
