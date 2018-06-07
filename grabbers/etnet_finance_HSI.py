@@ -15,7 +15,7 @@ def get_price(code):
     url = "https://www.etnet.com.hk/www/eng/stocks/realtime/quote.php?code=%s"%(code)
     ref = "https://www.etnet.com.hk/www/eng/stocks/realtime/quote.php?code=%s"%(code)
     response = requests.get(url, headers = {"Referer":ref,"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"})
-    sleep(1)
+    #sleep(1)
 
     parser = html.fromstring(response.text)
 
