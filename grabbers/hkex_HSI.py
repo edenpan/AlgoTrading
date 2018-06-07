@@ -9,7 +9,7 @@ import argparse
 from collections import OrderedDict
 import pandas as pd
 from datetime import datetime
-
+import os
 
 def get_price(code):
     
@@ -19,10 +19,9 @@ def get_price(code):
     ref = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en'
     user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
     response = requests.get(url,headers={"User-Agent":user, "Referer":ref})
-    sleep(1)
     
     cont = response.content
-    print cont
+    #print cont
     ad_cont = cont[cont.index('(')+1: -1]
     data = json.loads(ad_cont)
 
@@ -119,7 +118,11 @@ if __name__=="__main__":
 
     price_data = pd.DataFrame.from_dict(summary_data, orient='index').T 
 
-    file_name = 'HSI_hkex_' + updated_time
+    directory = updated_time
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    file_name = directory + '/HSI_hkex_' + updated_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 
