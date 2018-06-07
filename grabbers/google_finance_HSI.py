@@ -10,7 +10,7 @@ from collections import OrderedDict
 from time import sleep
 import pandas as pd
 from datetime import datetime
-
+import os
 
 def get_price(code):
    
@@ -91,7 +91,13 @@ if __name__=="__main__":
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-        HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)   
+        HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
+    
+    directory = updated_time
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    file_name = directory + '/HSI_google_' + updated_time
     
     file_name = 'HSI_google_' + updated_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
