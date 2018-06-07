@@ -14,8 +14,9 @@ from datetime import datetime
 
 def get_price(code):
     
-    url = "https://www1.hkex.com.hk/hkexwidget/data/getequityquote?sym={0}&token=evLtsLsBNAUVTPxtGqVeG1uj78xAa64jKHCMnMkWcVoo5HkIidDreVmzMKJ%2bZf21&lang=eng&qid=1528175147171&callback=jQuery3110305152158354391_1528175145792&_=1528175145793"
-    url = url.format(code)
+    token = getToken(code)
+    url = "https://www1.hkex.com.hk/hkexwidget/data/getequityquote?sym={0}&token={1}&lang=eng&qid=1528175147171&callback=jQuery3110305152158354391_1528175145792&_=1528175145793"
+    url = url.format(code,token)
     ref = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en'
     user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
     response = requests.get(url,headers={"User-Agent":user, "Referer":ref})
@@ -63,6 +64,18 @@ def get_price(code):
     
     return summary_data
 
+def getToken(code):
+    orgUrl = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym={0}&sc_lang=en'
+    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+    user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
+    orgUrl = orgUrl.format(code)
+    res1 = requests.get(orgUrl,headers={"User-Agent":user, "Accept":accept})
+    cont = res1.content
+    searchToken = 'Encrypted-Token'
+    cont2 = cont[cont.find(searchToken):cont.find(searchToken)+200 ]
+    cont3 = cont2[cont2.find('return') + 8:]
+    token = cont3[:cont3.find("\"")]
+    return token
 
 if __name__=="__main__":
     
