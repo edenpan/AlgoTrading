@@ -34,9 +34,12 @@ def get_price(code):
     summary_data.update({'Symbol':code})
 
     summary_table = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"B")]')
-    quote_price = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"A")]//span[contains(@class,"Price")]//text()')
+    quote = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"A")]//span[contains(@class,"Price")]//text()')
 
-    summary_data.update({'Nominal price':str(quote_price[0].strip())})
+    if len(quote) > 0:
+        summary_data.update({'Nominal price' : str(quote[0].strip())})
+    else:
+        summary_data.update({'Nominal price' : 'N/A'})
 
     for table_data in summary_table:
         raw_table_key = table_data.xpath('.//text()')
@@ -123,8 +126,6 @@ if __name__=="__main__":
         os.makedirs(directory)
 
     file_name = directory + '/HSI_etnet_' + updated_time
-
-    file_name = 'HSI_etnet_' + updated_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 
