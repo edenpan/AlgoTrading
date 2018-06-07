@@ -8,7 +8,8 @@ Notes:
 2. All missing values after scraping are replaced with N/A, except fot Google finance with '-'.       
 3. For one stock, please use its 4-digits code as input.     
 4. Fox Heng Seng index, components code is from Bloomberg.       
-5. Python Requests and LXML are needed. You can use pip or conda to install them.        
+5. Python Requests and LXML are needed. You can use pip or conda to install them.
+6. Python Pandas should be >= 0.23.
 
 
 Google finance
