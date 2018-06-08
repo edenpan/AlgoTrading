@@ -116,8 +116,6 @@ if __name__=="__main__":
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
 
-    price_data = pd.DataFrame.from_dict(summary_data, orient='index').T 
-
     directory = updated_time
     if not os.path.exists(directory):
         os.makedirs(directory)
