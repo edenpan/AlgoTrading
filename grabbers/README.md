@@ -92,7 +92,8 @@ Date|Symbol|Nominal Price|Net Change|Change(%)|Bid|Ask|P/E(x)|High|Low|Previous 
 
 Bloomberg
 -
-
+To get HSI components market data, simply run bloomberg_HSI.py:          
+`python bloomberg_HSI.py`
 
 
 
