@@ -46,7 +46,9 @@ def get_price(code):
         raw_table_value = table_data.xpath('.//span[contains(@class,"Num")]//text()')
         
         if len(raw_table_value)>0:
-            if str(raw_table_value[0]).strip()=='/--' or str(raw_table_value[0]).strip()=='--':
+            if raw_table_value[0] == u'\xa0':
+                table_value = 'N/A'
+            elif str(raw_table_value[0]).strip()=='/--' or str(raw_table_value[0]).strip()=='--':
                 table_value = 'N/A'
             else:
                 table_value = str(raw_table_value[0]).strip()
