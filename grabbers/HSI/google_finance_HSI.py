@@ -88,6 +88,9 @@ if __name__=="__main__":
     HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T
 
     for code in index[1:]:
+        # google finance bug, pls note
+        # if code == 'new issued stock':
+        #	continue
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
