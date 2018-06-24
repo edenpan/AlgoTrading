@@ -101,8 +101,7 @@ if __name__=="__main__":
         os.makedirs(directory)
 
     file_name = directory + '/HSI_google_' + updated_time
-    
-    file_name = 'HSI_google_' + updated_time
+
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 
