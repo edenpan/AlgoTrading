@@ -8,6 +8,43 @@ import argparse
 from pandas.io.json import json_normalize
 import pandas as pd
 from datetime import datetime
+from lxml import html  
+import requests
+from time import sleep
+from collections import OrderedDict
+import os
+
+def get_price(code):
+    
+        token = get_stock_Token(code)
+        url = "https://www1.hkex.com.hk/hkexwidget/data/getequityquote?sym={0}&token={1}&lang=eng&qid=1528175147171&callback=jQuery3110305152158354391_1528175145792&_=1528175145793"
+        url = url.format(code,token)
+        ref = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en'
+        user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
+        response = requests.get(url,headers={"User-Agent":user, "Referer":ref})
+        
+        cont = response.content
+        #print cont
+        ad_cont = cont[cont.index('(')+1: -1]
+        data = json.loads(ad_cont)
+
+        price = data['data']['quote']['ls'].encode('utf-8')
+
+        return price
+
+def get_stock_Token(code):
+        orgUrl = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym={0}&sc_lang=en'
+        accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+        user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
+        orgUrl = orgUrl.format(code)
+        res1 = requests.get(orgUrl,headers={"User-Agent":user, "Accept":accept})
+        cont = res1.content
+        searchToken = 'Encrypted-Token'
+        cont2 = cont[cont.find(searchToken):cont.find(searchToken)+200 ]
+        cont3 = cont2[cont2.find('return') + 8:]
+        token = cont3[:cont3.find("\"")]
+        return token
+
 
 class OptionPrice:
     
@@ -21,6 +58,11 @@ class OptionPrice:
         self.opener.addheaders = [('User-agent', user),('Accept', accept),("Content-Security-Policy", SecurityPolicy)]
         self.getToken()
         self.ats = []
+        self.underlying = []
+        self.price = []
+
+
+
 
     def getToken(self):
         orgUrl = 'http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Equity-Index/Hang-Seng-Index-Futures-and-Options?sc_lang=en'
@@ -71,10 +113,25 @@ class OptionPrice:
             if c == 0:
                 s = s[s.index('(')+1: -1]
                 data = json.loads(s)
-        
+                u_time = str(datetime.now())[0:10]
                 option_data = json_normalize(data['data']['optionlist'])
+                option_data.insert(loc=0, column='Date', value=u_time)
+                option_data.insert(loc=1, column='Underlying', value=self.underlying[0])
                 option_data = option_data.replace('', '-', regex=True)
-                file_name =  code + '_' + str(datetime.now())[0:10]
+
+                eod_price = float(self.price[0])
+                diff = abs(eod_price - float(option_data[0:1]['strike']))
+                #min(myList, key=lambda x:abs(x-eod_price))
+                index = 0
+
+                for ind, row in option_data.iterrows():
+                    if abs(eod_price - float(row['strike'])) < diff:
+                        diff = abs(eod_price - float(row['strike']))
+                        index = index + 1
+
+                option_data = option_data[index:index+1]
+                #option_data = option_data.insert(1, 'Underlying', self.underlying[0])
+                file_name =  code + '_' + u_time
                 option_data.to_csv(file_name + '.csv', sep=',', na_rep='-', index=False)    
                 break   
             c = c + 1        
@@ -88,12 +145,17 @@ if __name__=="__main__":
     
     argparser = argparse.ArgumentParser()
     argparser.add_argument('code',help = '')
+    argparser.add_argument('underlying',help = '')
     args = argparser.parse_args()
 
     code = args.code
+    EOD_price = get_price(args.underlying.lstrip('0'))
 
     option = OptionPrice()
     option.ats.append(code)
+    option.price.append(EOD_price)
+    option.underlying.append(args.underlying)
+
     option.getAllPrice()
 
 

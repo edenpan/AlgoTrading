@@ -3,7 +3,6 @@
 # usage: python google_finance_HSI.py
 from lxml import html  
 import requests
-from time import sleep
 import json
 import argparse
 from collections import OrderedDict
@@ -18,7 +17,7 @@ def get_price(code):
 
     response = requests.get(url,headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"})
     parser = html.fromstring(response.text)
-    #sleep(1)
+
     summary_data = OrderedDict()
 
     u_time = str(datetime.now())[0:10]
@@ -88,20 +87,18 @@ if __name__=="__main__":
     HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T
 
     for code in index[1:]:
-        # google finance bug, pls note
-        # if code == 'new issued stock':
-        #	continue
+    	# if code == '6098':
+     #    	continue
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-        HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
+        HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)   
     
     directory = updated_time
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.exists('data/google/'):
+        os.makedirs('data/google/')
 
-    file_name = directory + '/HSI_google_' + updated_time
-
+    file_name = 'data/google' + '/HSI_google_' + updated_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 

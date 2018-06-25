@@ -13,7 +13,7 @@ import os
 def get_price(code):
     url = "http://finance.yahoo.com/quote/%s?p=%s"%(code,code)
     response = requests.get(url)
-    sleep(1)
+    #sleep(1)
     parser = html.fromstring(response.text)
 
     summary_table = parser.xpath('//div[contains(@data-test,"summary-table")]//tr')
@@ -83,18 +83,18 @@ if __name__=="__main__":
     for code in index[1:]:
         code = code + '.HK'
         summary_data = get_price(code)
-        print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
-        
+
     directory = updated_time
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.exists('data/yahoo/'):
+        os.makedirs('data/yahoo/')
 
-    file_name = directory + '/HSI_yahoo_' + updated_time
-
-    file_name = 'HSI_yahoo_' + updated_time
+    file_name = 'data/yahoo' + '/HSI_yahoo_' + updated_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A',columns=cols, index=False)
+
+
+
 
 
 

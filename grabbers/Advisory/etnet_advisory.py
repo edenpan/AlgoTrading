@@ -10,8 +10,9 @@ from collections import OrderedDict
 from time import sleep
 import pandas as pd
 from datetime import datetime
+import os
 
-def get_price(code):
+def get_advisory(code):
     url = "https://www.etnet.com.hk/www/eng/stocks/realtime/quote_profit.php?code=%s"%(code)
     ref = "https://www.etnet.com.hk/www/eng/stocks/realtime/quote_profit.php?code=%s"%(code)
     response = requests.get(url, headers = {"Referer": ref, "User-Agent": "Mozilla/5.0 \
@@ -46,19 +47,54 @@ def get_price(code):
 
     return summary_data
 
+def get_index():
+
+    url = "https://www.bloomberg.com/quote/HSI:IND/members"
+
+    response = requests.get(url)
+    s=response.text
+    parser = html.fromstring(s)
+
+    index = parser.xpath('//div[@class="index-members"]/div[1]/div[@class="index-members"]/div[@class="security-summary"]')
+
+    s_index = []
+    i = 0
+
+    for mem in index:
+        ticker = mem.xpath('.//a[contains(@class,"ticker")]//text()')
+        temp = str(ticker[0])[:-3]
+        if len(temp)<4:
+            temp = (4-len(temp))*'0' + temp
+
+        s_index.append(temp)
+        i = i + 1
+
+    return s_index
+
 
 if __name__=="__main__":
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('code',help = '')
-    args = argparser.parse_args()
-    
-    code = args.code  
-    summary_data = get_price(code)
-    file_name = code + '_etnet_advisory_' + str(datetime.now())[0:10]
 
-    if len(summary_data)!=1:
-        price_data = pd.DataFrame.from_dict(summary_data, orient='index')
-        price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', header=False, index=False)
-    else:
-        print "No advisory data provided."
+    index = get_index()
+
+    # first_summary_data = get_price(index[0])
+    # #cols = first_summary_data.keys()
+    # #updated_time = first_summary_data['Date']
+    # HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T 
+    updated_time = str(datetime.now())[0:10]
+    directory = updated_time
+    if not os.path.exists('etnet/' + directory):
+        os.makedirs('etnet/' + directory)
+    
+    for code in index:
+        summary_data = get_advisory(code)
+        #print summary_data
+        file_name =  'etnet/' + directory + '/' + code + '_Etnet_Advisory_' + updated_time
+
+        if len(summary_data)!=1:
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index')
+            price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', header=False, index=False)
+        # else:
+        #     print "No advisory data provided."
+        
+    
 
