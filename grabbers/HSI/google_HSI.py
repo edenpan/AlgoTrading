@@ -33,13 +33,6 @@ def get_price(code):
     price = parser.xpath('//div[contains(@id,"entity-summary")]/div[1]/div[1]/g-card-section[2]/div[1]/div[1]//td//text()')
     headers = ['Open', 'High', 'Low', 'Mkt cap', 'P/E ratio', 'Div yield', 'Prev close', '52-wk high', '52-wk low']
 
-    #xx=[]
-    # #if len(price)>0
-    #     #print i
-    #     value = str(price[i]).strip()
-    #     if value == '-':
-    #         value = 'N/A'     
-    #     xx.append(i)    
     summary_data.update({headers[0] : str(price[1]).strip()})
     summary_data.update({headers[1] : str(price[3]).strip()})
     summary_data.update({headers[2] : str(price[5]).strip()})
@@ -49,6 +42,7 @@ def get_price(code):
     summary_data.update({headers[6] : str(price[13]).strip()})
     summary_data.update({headers[7] : str(price[15]).strip()})
     summary_data.update({headers[8] : str(price[17]).strip()})
+
 
     return summary_data
 
@@ -80,25 +74,23 @@ def get_index():
 if __name__=="__main__":
     
     index = get_index()
-    first_summary_data = get_price(index[0])
-    cols = first_summary_data.keys()
-    
-    updated_time = first_summary_data['Date']
-    HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T
+    HSI_price_data = pd.DataFrame()
+    f_data = get_price(index[0])
+    cols = f_data.keys()
 
-    for code in index[1:]:
+    for code in index:
     	# if code == '6098':
-     #    	continue
+        #    continue
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)   
     
-    directory = updated_time
+    u_time = str(datetime.now())[0:10]
     if not os.path.exists('data/google/'):
         os.makedirs('data/google/')
 
-    file_name = 'data/google' + '/HSI_google_' + updated_time
+    file_name = 'data/google' + '/HSI_google_' + u_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 

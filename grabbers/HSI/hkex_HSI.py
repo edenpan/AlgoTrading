@@ -25,6 +25,12 @@ def get_price(code):
     ad_cont = cont[cont.index('(')+1: -1]
     data = json.loads(ad_cont)
 
+    summary_data = OrderedDict()
+    headers = ['Nominal Price', 'Prev close', 'Open', 'Turnover', 'Volume', 'Mkt cap', 'Bid','Ask', 'EPS(RMB)', 'P/E ratio', 'Div yield', 'High', 'Low', '52-wk high', '52-wk low']
+    u_time = str(datetime.now())[0:10]
+    summary_data.update({'Date':u_time})
+    summary_data.update({'Symbol':code})
+
     price = data['data']['quote']['ls'].encode('utf-8')
     prev_close = data['data']['quote']['hc'].encode('utf-8')
     op = data['data']['quote']['op'].encode('utf-8')
@@ -39,30 +45,19 @@ def get_price(code):
 
     high = data['data']['quote']['hi'].encode('utf-8')
     low = data['data']['quote']['lo'].encode('utf-8')
-    h52 = data['data']['quote']['hi52'].encode('utf-8')
+    high52 = data['data']['quote']['hi52'].encode('utf-8')
     low52 = data['data']['quote']['lo52'].encode('utf-8')
-    
-    #u_time = data['data']['quote']['updatetime'].encode('utf-8')
 
-    market_data = [price,prev_close,op,to,vol,cap,bid,ask,eps,pe,div,high,low,h52,low52]
-
-    summary_data = OrderedDict()
-    headers = ['Nominal Price', 'Prev close', 'Open', 'Turnover', 'Volume', 'Mkt cap', 'Bid','Ask', 'EPS(RMB)', 'P/E ratio', 'Div yield', 'High', 'Low', '52-wk high', '52-wk low']
-
-    #up_date = datetime.strptime(u_time[:-6], '%d %b %Y')
-    #updated_time = str(up_date)[0:10]
-
-    u_time = str(datetime.now())[0:10]
-    summary_data.update({'Date':u_time})
-    summary_data.update({'Symbol':code})
+    market_data = [price,prev_close,op,to,vol,cap,bid,ask,eps,pe,div,high,low,high52,low52]
 
     for i in range(0,15,1):
         value = market_data[i]
         if value == '-':
             value = 'N/A'
-        summary_data.update({headers[i]:value})
+        summary_data.update({headers[i]:value})       
     
     return summary_data
+
 
 def getToken(code):
     orgUrl = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym={0}&sc_lang=en'
@@ -76,6 +71,7 @@ def getToken(code):
     cont3 = cont2[cont2.find('return') + 8:]
     token = cont3[:cont3.find("\"")]
     return token
+
 
 def get_index():
 
@@ -105,22 +101,22 @@ def get_index():
 if __name__=="__main__":
     
     index = get_index()
-    first_summary_data = get_price(index[0].lstrip('0'))
-    cols = first_summary_data.keys()
-    updated_time = first_summary_data['Date']
-    HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T 
 
-    for code in index[1:]:
+    HSI_price_data = pd.DataFrame()
+    f_data = get_price(index[0].lstrip('0'))
+    cols = f_data.keys()
 
+    for code in index:
         summary_data = get_price(code.lstrip('0'))
+        print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
 
-    directory = updated_time
+    u_time = str(datetime.now())[0:10]
     if not os.path.exists('data/hkex/'):
         os.makedirs('data/hkex/')
 
-    file_name = 'data/hkex' + '/HSI_hkex_' + updated_time
+    file_name = 'data/hkex' + '/HSI_hkex_' + u_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 

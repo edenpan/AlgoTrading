@@ -37,27 +37,27 @@ def get_price(code):
         raw_table_value = table_data.xpath('.//div//text()')
 
         table_key = str(raw_table_key[0]).strip()
-        
+            
         table_value = ''
         for i in range(0,len(raw_table_value)):
             table_value = table_value + str(raw_table_value[i]).strip()
 
         summary_data.update({table_key:table_value})
 
+
     summary2 = parser.xpath('//div[contains(@class,"keyStatistics")]//div[contains(@class,"rowListItemWrap")]')
-                     
-                           
+                      
     for table_data in summary2:
         raw_table_key = table_data.xpath('.//text()')[0]
         raw_table_value = table_data.xpath('.//text()')[1]
 
         table_key = str(raw_table_key).strip()
-        
+            
         if str(raw_table_value).strip()=='--':
             table_value = 'N/A'
         else:
             table_value = str(raw_table_value).strip()
-        
+            
         summary_data.update({table_key:table_value})
 
     return summary_data
@@ -91,22 +91,23 @@ def get_index():
 if __name__=="__main__":
     
     index = get_index()
-    first_summary_data = get_price(index[0].lstrip('0'))
-    cols = first_summary_data.keys()
-    updated_time = first_summary_data['Date']
-    HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T 
+    HSI_price_data = pd.DataFrame()
+    f_data = get_price(index[0].lstrip('0'))
+    cols = f_data.keys()
 
-    for code in index[1:]:
+    for code in index:
 
         summary_data = get_price(code.lstrip('0'))
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
 
-    directory = updated_time
+    u_time = str(datetime.now())[0:10]
     if not os.path.exists('data/bloomberg/'):
         os.makedirs('data/bloomberg/')
 
-    file_name = 'data/bloomberg' + '/HSI_bloomberg_' + updated_time
+    file_name = 'data/bloomberg' + '/HSI_bloomberg_' + u_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
+
+
 

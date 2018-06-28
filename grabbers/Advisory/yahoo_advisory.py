@@ -14,7 +14,7 @@ def get_price(code):
  
     url = "http://finance.yahoo.com/quote/%s?p=%s"%(code,code)
     response = requests.get(url)
-
+    sleep(2)
     soup = BeautifulSoup(response.content, "lxml")
     script = soup.find("script",text=re.compile("root.App.main")).text
     data = loads(re.search("root.App.main\\s+=\\s+(\\{.*\\})", script).group(1))
@@ -106,24 +106,22 @@ def get_index():
 if __name__=="__main__":
     
     index = get_index()
-
-    first_summary_data = get_price(index[0]+'.HK')
-    cols = first_summary_data.keys()
-    updated_time = first_summary_data['Date']
-    HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T 
+    HSI_price_data = pd.DataFrame()
+    f_data = get_price(index[0] + '.HK')
+    cols = f_data.keys() 
     
-    for code in index[1:]:
+    for code in index:
         code = code + '.HK'
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
-        
-    directory = updated_time
-    if not os.path.exists('yahoo/' + directory):
-        os.makedirs('yahoo/' + directory)
+    
+    u_time = str(datetime.now())[0:10]    
+    if not os.path.exists('yahoo/'):
+        os.makedirs('yahoo/')
 
-    file_name = 'yahoo/' + directory + '/HSI_Advisory_Yahoo_' + updated_time
+    file_name = 'yahoo/HSI_Advisory_Yahoo_' + u_time
 
-    HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A',columns=cols, index=False)
+    HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 

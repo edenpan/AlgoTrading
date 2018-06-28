@@ -1,10 +1,4 @@
 #http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Stock-Options?sc_lang=en#&sttype=options
-
-import urllib2
-from http import cookiejar
-import time
-import json
-import argparse
 from pandas.io.json import json_normalize
 import pandas as pd
 from datetime import datetime
@@ -13,150 +7,191 @@ import requests
 from time import sleep
 from collections import OrderedDict
 import os
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+#get hk option code and their underlying 
+def get_code():
+    url = "http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Stock-Options?sc_lang=en#&sttype=options"
+
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    response = webdriver.Chrome(chrome_options=chrome_options)
+    response.get(url)
+    sleep(3)
+    response.find_element_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[1]/span').click()
+
+    l = response.find_elements_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[2]/div')
+    response.find_elements_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[2]/div[{0}]/span'.format(len(l)))[0].click()
+
+    code_list = response.find_elements_by_xpath('//*[@id="mCSB_1_container"]/div/div/table/tbody/tr')
+
+    code=[]
+    underlying=[]
+    vol=[]
+    for i in range(len(code_list)):
+        c = code_list[i].find_elements_by_xpath('.//td[1]')[0].text.encode('utf-8')
+        u = code_list[i].find_elements_by_xpath('.//td[2]')[0].text.encode('utf-8')
+        v = code_list[i].find_elements_by_xpath('.//td[5]')[0].text.encode('utf-8')
+
+        if (i > 0) and (u == underlying[-1]):
+            #print float(vol[i-1].replace(",", "")),code[i-1],underlying[i-1]
+            if float(v.replace(",", "")) > float(vol[-1].replace(",", "")):
+                del code[-1]
+                del underlying[-1]
+                del vol[-1]
+                code.append(c)
+                underlying.append(u)
+                vol.append(v)
+        else:
+            code.append(c)
+            underlying.append(u)
+            vol.append(v)
+
+    return code, underlying  
+
+#get option trading info (at the money, 1 month)
+def get_option(code, underlying, price):
+
+    # response.find_element_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/em').click()
+
+    # x = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/ul/li[2]')
+    # x[0].click()
+    url = "http://www.hkex.com.hk/market-data/futures-and-options-prices/single-stock/details?sc_lang=en&product={0}".format(code)
+
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    response = webdriver.Chrome(chrome_options=chrome_options)
+
+    response.get(url)
+    sleep(3)
+    parser = html.fromstring(response.page_source)
+
+    summary_data = OrderedDict()
+
+    u_time = str(datetime.now())[0:10]
+    summary_data.update({'Date':u_time})
+    summary_data.update({'Code':code})
+
+    ex = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/span')
+    if len(ex) > 0:
+        expiry = ex[0].text.encode('utf-8')
+        summary_data.update({'Expiry':expiry})
+    else:
+        summary_data.update({'Expiry':'-'})
+
+    summary_data.update({'Undelying':underlying})
+    summary_data.update({'Closing':price})
+
+
+    o_list = parser.xpath('//*[@id="option"]/tbody/tr')
+
+    diff = 9999
+    #select at the money
+    index = 0
+    if price != '-' and len(o_list)>0:
+        for i in range(len(o_list)):
+            s = o_list[i].xpath('./td[6]')[0].text
+            #print s
+            #strike = s[0].text
+            if abs(float(s) - float(price)) < diff:
+                diff = abs(float(s)-float(price))
+                index = i
+
+    summary = parser.xpath('//*[@id="option"]/tbody/tr[{0}]/td/text()'.format(index+1))
+    if len(summary) > 0:
+        #OI Volume  IV  Bid/Ask Last    Strike  Last    Bid/Ask IV  Volume  OI
+        summary_data.update({'C.OI':summary[0]})
+        summary_data.update({'C.VOL':summary[1]})
+        summary_data.update({'C.IV':summary[2]})
+        summary_data.update({'C.B/A':summary[3]})
+        summary_data.update({'C.LAST':summary[4]})
+        summary_data.update({'Strike':summary[5]})
+        summary_data.update({'P.LAST':summary[6]})
+        summary_data.update({'P.B/A':summary[7]})
+        summary_data.update({'P.IV':summary[8]})
+        summary_data.update({'P.VOL':summary[9]})
+        summary_data.update({'P.OI':summary[10]})
+    else:
+        summary_data.clear()     
+        
+
+    return summary_data                           
+
+
+#get underlying price (bloomberg) 
 
 def get_price(code):
-    
-        token = get_stock_Token(code)
-        url = "https://www1.hkex.com.hk/hkexwidget/data/getequityquote?sym={0}&token={1}&lang=eng&qid=1528175147171&callback=jQuery3110305152158354391_1528175145792&_=1528175145793"
-        url = url.format(code,token)
-        ref = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=700&sc_lang=en'
-        user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-        response = requests.get(url,headers={"User-Agent":user, "Referer":ref})
-        
-        cont = response.content
-        #print cont
-        ad_cont = cont[cont.index('(')+1: -1]
-        data = json.loads(ad_cont)
+    url = "https://www.bloomberg.com/quote/{0}:HK"
+    url = url.format(code)
+    #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
 
-        price = data['data']['quote']['ls'].encode('utf-8')
+    response = requests.get(url)
+    parser = html.fromstring(response.text)
 
-        return price
+    quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
 
-def get_stock_Token(code):
-        orgUrl = 'http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym={0}&sc_lang=en'
-        accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-        user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-        orgUrl = orgUrl.format(code)
-        res1 = requests.get(orgUrl,headers={"User-Agent":user, "Accept":accept})
-        cont = res1.content
-        searchToken = 'Encrypted-Token'
-        cont2 = cont[cont.find(searchToken):cont.find(searchToken)+200 ]
-        cont3 = cont2[cont2.find('return') + 8:]
-        token = cont3[:cont3.find("\"")]
-        return token
+    if len(quote) > 0:
+        price = str(quote[0]).strip()
+    else:
+        price = '-'
+
+    return price
 
 
-class OptionPrice:
-    
-    def __init__(self):
-        self.cookie = cookiejar.CookieJar()
-        self.handler=urllib2.HTTPCookieProcessor(self.cookie)
-        self.opener = urllib2.build_opener(self.handler)
-        accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-        user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-        SecurityPolicy = "frame-ancestors 'self' http://www.hkgem.com http://www.hkex.com.hk http://www.hkexgroup.com http://sc.hkex.com.hk http://sc.hkexnews.hk http://www.hkexnews.hk http://203.78.5.185 http://203.78.5.190; frame-src 'self' http://www.hkgem.com http://www.hkex.com.hk http://www.hkexgroup.com http://sc.hkex.com.hk http://sc.hkexnews.hk http://www.hkexnews.hk http://asia.tools.euroland.com http://203.78.5.185 http://203.78.5.190;"
-        self.opener.addheaders = [('User-agent', user),('Accept', accept),("Content-Security-Policy", SecurityPolicy)]
-        self.getToken()
-        self.ats = []
-        self.underlying = []
-        self.price = []
+def get_index():
 
+    url = "https://www.bloomberg.com/quote/HSI:IND/members"
 
+    response = requests.get(url)
+    s=response.text
+    parser = html.fromstring(s)
 
+    index = parser.xpath('//div[@class="index-members"]/div[1]/div[@class="index-members"]/div[@class="security-summary"]')
 
-    def getToken(self):
-        orgUrl = 'http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Equity-Index/Hang-Seng-Index-Futures-and-Options?sc_lang=en'
-        response = self.opener.open(orgUrl)
-        cont = response.read()
-        searchToken = 'Encrypted-Token'
-        cont2 = cont[cont.find(searchToken):cont.find(searchToken)+200]
-        cont3 = cont2[cont2.find('return') + 8:]
-        self.token = cont3[:cont3.find("\"")]
+    s_index = []
 
-    def getMonthList(self, code):
-        url = 'https://www1.hkex.com.hk/hkexwidget/data/getoptioncontractlist?lang=eng&token={0}&ats={1}&qid={2}&callback=jQuery31109370303295785578_1529140424891&_={3}'
-        qid = int(time.time() * 1000)
-        slash = qid - 1102
-        url = url.format(self.token,code,qid,slash)
-        ref = 'http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Equity-Index/Hang-Seng-Index-Futures-and-Options?sc_lang=en'
-        self.opener.addheaders = [('Referer',ref)]
-        response = self.opener.open(url)
-        rangeStr = response.read()
-        rangeStr = rangeStr[41:-1]
-        text = json.loads(rangeStr)
-        conlist = text.get("data").get("conlist")
-        return conlist
-
-    def getOption(self, code):
-        conlist = self.getMonthList(code)
-        c = 0
-        for con in conlist:
-            month = con.get('id')
-            qid = int(time.time() * 1000)
-            slash = qid - 1102
-            rangeurl = "https://www1.hkex.com.hk/hkexwidget/data/getderivativesoption?lang=eng&token={0}&ats={1}&con={2}&fr=null&to=null&type=0&qid={3}&callback=jQuery3110595211137306934_1528993752048&_={4}"
-            rangeurl = rangeurl.format(self.token,code,month,qid,slash)
-            response = self.opener.open(rangeurl)
-            rangeStr = response.read()
-            rangeStr = rangeStr[40:-1]
-            text = json.loads(rangeStr)
-
-            maxStr =  str(text.get('data').get("max")).translate(None, ',')
-            maxStr = "%d" % float(maxStr)
-            minStr =  str(text.get('data').get("min")).translate(None, ',')
-            minStr = "%d" % float(minStr)
-            url = "https://www1.hkex.com.hk/hkexwidget/data/getderivativesoption?lang=eng&token={0}&ats={1}&con={2}&fr={3}&to={4}&type=0&qid={5}&callback=jQuery3110595211137306934_1528993752048&_={6}"
-            url = url.format(self.token,code,month,minStr, maxStr,qid,slash)
-            
-            response = self.opener.open(url)
-            s = response.read()
-            if c == 0:
-                s = s[s.index('(')+1: -1]
-                data = json.loads(s)
-                u_time = str(datetime.now())[0:10]
-                option_data = json_normalize(data['data']['optionlist'])
-                option_data.insert(loc=0, column='Date', value=u_time)
-                option_data.insert(loc=1, column='Underlying', value=self.underlying[0])
-                option_data = option_data.replace('', '-', regex=True)
-
-                eod_price = float(self.price[0])
-                diff = abs(eod_price - float(option_data[0:1]['strike']))
-                #min(myList, key=lambda x:abs(x-eod_price))
-                index = 0
-
-                for ind, row in option_data.iterrows():
-                    if abs(eod_price - float(row['strike'])) < diff:
-                        diff = abs(eod_price - float(row['strike']))
-                        index = index + 1
-
-                option_data = option_data[index:index+1]
-                #option_data = option_data.insert(1, 'Underlying', self.underlying[0])
-                file_name =  code + '_' + u_time
-                option_data.to_csv(file_name + '.csv', sep=',', na_rep='-', index=False)    
-                break   
-            c = c + 1        
-        
-    def getAllPrice(self):
-        for code in self.ats:
-            self.getOption(code)
+    for mem in index:
+        ticker = mem.xpath('.//a[contains(@class,"ticker")]//text()')
+        temp = str(ticker[0])[:-3]
+        s_index.append(temp)
+  
+    return s_index
 
 
 if __name__=="__main__":
+
+
+    code, underlying = get_code()
+    index = get_index()
+
+    ol = []
+    sl = []
+    for c, u in zip(code, underlying):
+        if u in index:
+            ol.append(c)    
+            sl.append(u)
+
+    Option_data = pd.DataFrame()
+    cols=[]
+
+    for i in range(len(ol)):
+
+        price = get_price(sl[i])
+        summary_data = get_option(ol[i], sl[i], price)
+        if summary_data:
+            print summary_data
+            cols = summary_data.keys()
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
+            Option_data = pd.concat([Option_data, price_data], sort=True)
     
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('code',help = '')
-    argparser.add_argument('underlying',help = '')
-    args = argparser.parse_args()
+    u_time = str(datetime.now())[0:10]           
+    if not os.path.exists('data/'):
+        os.makedirs('data/')
 
-    code = args.code
-    EOD_price = get_price(args.underlying.lstrip('0'))
-
-    option = OptionPrice()
-    option.ats.append(code)
-    option.price.append(EOD_price)
-    option.underlying.append(args.underlying)
-
-    option.getAllPrice()
-
+    file_name = 'data' + '/HK_Option_' + u_time
+    Option_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 

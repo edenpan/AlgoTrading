@@ -22,19 +22,10 @@ def get_price(code):
     
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
-
-    #updated_time = parser.xpath('//div[@id="DivContentRight"]/div[@class="DivBoxStyleE shadow"][1]/div[2]/div[@class="remark"]/text()')
-
-    #t = updated_time[0].strip()[-16:-6]
-    #up_date = datetime.strptime(t, '%d/%m/%Y')
-    #updated_time = str(up_date)[0:10]
-    #summary_data.update({'Date':updated_time})
-
     summary_data.update({'Symbol':code})
 
     summary_table = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"B")]')
     quote = parser.xpath('//div[contains(@id,"StkDetailMainBox")]//td[contains(@class,"A")]//span[contains(@class,"Price")]//text()')
-    #summary_data.update({'Nominal price':str(quote[0].strip())})
     
     if len(quote) > 0:
         summary_data.update({'Nominal price' : str(quote[0].strip())})
@@ -75,7 +66,6 @@ def get_price(code):
         
         summary_data.update({table_key:table_value})
 
-    
     del summary_data['Currency']
     del summary_data['Eligible for CAS']
     del summary_data['Eligible for VCM']        
@@ -113,22 +103,21 @@ def get_index():
 if __name__=="__main__":
 
     index = get_index()
-    first_summary_data = get_price(index[0])
-    cols = first_summary_data.keys()
-    updated_time = first_summary_data['Date']
-    HSI_price_data = pd.DataFrame.from_dict(first_summary_data, orient='index').T 
+    HSI_price_data = pd.DataFrame()
+    f_data = get_price(index[0])
+    cols = f_data.keys()
     
-    for code in index[1:]:
+    for code in index:
         summary_data = get_price(code)
         print summary_data
         price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
         HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
 
-    directory = updated_time
+    u_time = str(datetime.now())[0:10]
     if not os.path.exists('data/etnet/'):
         os.makedirs('data/etnet/')
 
-    file_name = 'data/etnet' + '/HSI_etnet_' + updated_time
+    file_name = 'data/etnet' + '/HSI_etnet_' + u_time
     HSI_price_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 
