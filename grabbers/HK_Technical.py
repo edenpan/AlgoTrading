@@ -9,6 +9,12 @@ from collections import OrderedDict
 import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from datetime import timedelta
+import numpy as np
+import pandas as pd
+import quandl
+quandl.ApiConfig.api_key = 'FxbKCf83-WeNae8uyxQg'
+
 
 #get hk option code and their underlying 
 def get_code():
@@ -19,7 +25,7 @@ def get_code():
     chrome_options.add_argument('--disable-gpu')
     response = webdriver.Chrome(chrome_options=chrome_options)
     response.get(url)
-    sleep(4)
+    sleep(3)
     response.find_element_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[1]/span').click()
 
     l = response.find_elements_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[2]/div')
@@ -52,7 +58,7 @@ def get_code():
     return code, underlying  
 
 #get option trading info (at the money, 1 month)
-def get_option(code, underlying, price):
+def get_option(code, underlying, price, x):
 
     # response.find_element_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/em').click()
 
@@ -66,25 +72,37 @@ def get_option(code, underlying, price):
     response = webdriver.Chrome(chrome_options=chrome_options)
 
     response.get(url)
-    sleep(4)
+    sleep(3)
     parser = html.fromstring(response.page_source)
 
     summary_data = OrderedDict()
 
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
-    summary_data.update({'Code':code})
+    summary_data.update({'Stock Code':underlying})
+    summary_data.update({'Option Code':code})
 
-    ex = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/span')
-    if len(ex) > 0:
-        expiry = ex[0].text.encode('utf-8')
-        summary_data.update({'Expiry':expiry})
-    else:
-        summary_data.update({'Expiry':'-'})
+    # ex = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/span')
+    # if len(ex) > 0:
+    #     expiry = ex[0].text.encode('utf-8')
+    #     summary_data.update({'Expiry':expiry})
+    # else:
+    #     summary_data.update({'Expiry':'-'})
 
-    summary_data.update({'Undelying':underlying})
     summary_data.update({'Closing':price})
 
+    if len(underlying)<5:
+            underlying = (5-len(underlying))*'0' + underlying
+
+    mu,upper,down,u_d,net_change,change_per,u_d_2 = get_BBands(underlying, u_time, 20)
+    summary_data.update({'Net Change':net_change})
+    summary_data.update({'Change(%)':change_per})
+    
+    summary_data.update({'BBands M':round(mu,2)})
+    summary_data.update({'BBands U':round(upper,2)})
+    summary_data.update({'BBands D':round(down,2)})
+    summary_data.update({'U/D(mu)':u_d})
+    summary_data.update({'U/D(B)':u_d_2})
 
     o_list = parser.xpath('//*[@id="option"]/tbody/tr')
 
@@ -101,28 +119,91 @@ def get_option(code, underlying, price):
                 index = i
 
     summary = parser.xpath('//*[@id="option"]/tbody/tr[{0}]/td/text()'.format(index+1))
+    c_u_d = ''
     if len(summary) > 0:
         #OI Volume  IV  Bid/Ask Last    Strike  Last    Bid/Ask IV  Volume  OI
-        summary_data.update({'C.OI':summary[0]})
-        summary_data.update({'C.VOL':summary[1]})
-        summary_data.update({'C.IV':summary[2]})
-        summary_data.update({'C.B/A':summary[3]})
-        summary_data.update({'C.LAST':summary[4]})
-        summary_data.update({'Strike':summary[5]})
-        summary_data.update({'P.LAST':summary[6]})
-        summary_data.update({'P.B/A':summary[7]})
-        summary_data.update({'P.IV':summary[8]})
-        summary_data.update({'P.VOL':summary[9]})
-        summary_data.update({'P.OI':summary[10]})
-    else:
-        summary_data.clear()     
-        
+        index = x[(x.Code == code)].index.tolist()[0]
+        last_civ = x[index:index+1]['C.IV'].tolist()[0]
+        # last_piv = x[index:index+1]['P.IV'].tolist()[0]
 
+        if summary[2]!='-' and float(summary[2]) < float(last_civ):
+            c_u_d = 'down'
+        elif summary[2]!='-' and float(summary[2]) >= float(last_civ):
+            c_u_d = 'up'
+        else:
+            c_u_d = '-'
+
+        # if summary[8]!='-' and summary[2] < last_piv:
+        #     p_u_d = 'down'
+        # elif summary[8]!='-' and summary[2] >= last_piv
+        #     p_u_d = 'up'
+        # else:
+        #     p_u_d = '-'
+
+        summary_data.update({'IV(1C)':summary[2]})
+        summary_data.update({'U/D(1C)':c_u_d})
+
+        #summary_data.update({'IV(1P)':summary[8]})
+    else:
+        summary_data.clear()
+     
     return summary_data                           
+
+# get net position up/down, BBands(u,d,m) and up/down
+def get_BBands(code, lastdate, period = 20):
+
+    stock_code = 'HKEX/' + code
+    price_data = quandl.get(stock_code, start_date = lastdate, end_date = lastdate)
+    
+    mu = 0
+    sigma = 0
+    u_d = ''
+    u_d_2 = ''
+    net_change = 0
+    change_per = 0
+
+    last_date = datetime.strptime(lastdate,'%Y-%m-%d')
+    
+    right = str(last_date)
+    left = str(last_date - timedelta(days = period*2))
+
+    price_BB = quandl.get(stock_code, start_date = left , end_date = right)
+
+    data = np.array(list(price_BB[-period:]['Nominal Price']))
+    mu = np.mean(data)
+    quote = price_BB[-1:]['Nominal Price']
+    if float(quote) >= np.mean(data):
+        u_d = 'up'
+    else:
+        u_d = 'down'
+    
+
+    quote_yes = price_BB[-2:-1]['Nominal Price']
+    net_change = round(float(quote)-float(quote_yes),2)
+    change_per = round(100*(float(quote)-float(quote_yes))/float(quote_yes),2)
+    sigma = np.std(data)
+
+    upper = mu + 2*sigma
+    down = mu - 2*sigma  
+
+    if float(quote) >= upper:
+        u_d_2 = 'up'
+    elif float(quote) <= down:
+        u_d_2 = 'down'
+    else:
+        u_d_2 = '-'
+
+    # price_data['BBands M'] = mu.values
+    # price_data['BBands U'] = up.values
+    # price_data['BBands D'] = do.values
+    # price_data['UP/DOWN'] = pos.values
+    # price_data['NET POS'] = n_c.values
+    # price_data['POS(%)'] = c_p.values
+
+    return mu,upper,down,u_d,net_change,change_per,u_d_2
 
 
 #get underlying price (bloomberg) 
-
 def get_price(code):
     url = "https://www.bloomberg.com/quote/{0}:HK"
     url = url.format(code)
@@ -174,24 +255,34 @@ if __name__=="__main__":
             ol.append(c)    
             sl.append(u)
 
-    Option_data = pd.DataFrame()
+    u_time = str(datetime.now())[0:10]
+    current_date = datetime.strptime(u_time,'%Y-%m-%d')
+
+    count = 1
+    last_date = str(current_date - timedelta(days = count))
+    while((not os.path.exists('Option/data/HK_Option_'+ last_date[0:10] + '.csv')) and last_date[0:10]>='2018-06-01'):
+        count = count + 1
+        #print count
+        last_date = str(current_date - timedelta(days = count))
+
+    x = pd.read_csv('Option/data/HK_Option_'+ last_date[0:10] + '.csv')
+
+    data = pd.DataFrame()
     cols=[]
 
     for i in range(len(ol)):
-
         price = get_price(sl[i])
-        summary_data = get_option(ol[i], sl[i], price)
+        summary_data = get_option(ol[i], sl[i], price, x)
         if summary_data:
             print summary_data
             cols = summary_data.keys()
             price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-            Option_data = pd.concat([Option_data, price_data], sort=True)
-    
-    u_time = str(datetime.now())[0:10]           
-    if not os.path.exists('data/'):
-        os.makedirs('data/')
+            data = pd.concat([data, price_data], sort=True)
+              
+    if not os.path.exists('tech_data/'):
+        os.makedirs('tech_data/')
 
-    file_name = 'data' + '/HK_Option_' + u_time
-    Option_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
+    file_name = 'tech_data' + '/HK_Technical_' + u_time
+    data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 

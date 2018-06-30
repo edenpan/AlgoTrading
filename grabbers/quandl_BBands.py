@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 quandl.ApiConfig.api_key = 'FxbKCf83-WeNae8uyxQg'
 
-
+# get net position up/down, BBands(u,d,m) and up/down
 def get_price(code, lastdate, horizon = 0, period = 20):
     
     if horizon == 0:
