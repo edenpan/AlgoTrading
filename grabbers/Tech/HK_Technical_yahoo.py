@@ -12,8 +12,6 @@ from selenium.webdriver.chrome.options import Options
 from datetime import timedelta
 import numpy as np
 import pandas as pd
-import quandl
-quandl.ApiConfig.api_key = 'FxbKCf83-WeNae8uyxQg'
 
 
 #get hk option code and their underlying 
@@ -91,8 +89,8 @@ def get_option(code, underlying, price, x):
 
     summary_data.update({'Closing':price})
 
-    if len(underlying)<5:
-            underlying = (5-len(underlying))*'0' + underlying
+    if len(underlying)<4:
+            underlying = (4-len(underlying))*'0' + underlying
 
     mu,upper,down,u_d,net_change,change_per,u_d_2 = get_BBands(underlying, u_time, 20)
     summary_data.update({'Net Change':net_change})
@@ -126,9 +124,9 @@ def get_option(code, underlying, price, x):
         last_civ = x[index:index+1]['IV(1C)'].tolist()[0]
         # last_piv = x[index:index+1]['P.IV'].tolist()[0]
 
-        if summary[2]!='-' and float(summary[2]) < float(last_civ):
+        if summary[2]!='-' and last_civ!='-' and float(summary[2].rstrip('%')) < float(last_civ.rstrip('%')):
             c_u_d = 'down'
-        elif summary[2]!='-' and float(summary[2]) >= float(last_civ):
+        elif summary[2]!='-' and last_civ!='-' and float(summary[2].rstrip('%')) >= float(last_civ.rstrip('%')):
             c_u_d = 'up'
         else:
             c_u_d = '-'
@@ -152,8 +150,14 @@ def get_option(code, underlying, price, x):
 # get net position up/down, BBands(u,d,m) and up/down
 def get_BBands(code, lastdate, period = 20):
 
-    stock_code = 'HKEX/' + code
-    price_data = quandl.get(stock_code, start_date = lastdate, end_date = lastdate)
+    code = code + '.HK'
+    url = "https://finance.yahoo.com/quote/%s/history?p=%s"%(code,code)
+    response = requests.get(url)
+
+    parser = html.fromstring(response.text)
+
+
+    quote = parser.xpath('//table[contains(@data-test,"historical-prices")]/tbody[1]/tr')
     
     mu = 0
     sigma = 0
@@ -162,33 +166,45 @@ def get_BBands(code, lastdate, period = 20):
     net_change = 0
     change_per = 0
 
-    last_date = datetime.strptime(lastdate,'%Y-%m-%d')
-    
-    right = str(last_date)
-    left = str(last_date - timedelta(days = period*2))
+    count=0
+    c_price=''
+    y_price=''
+    BBdata = []
 
-    price_BB = quandl.get(stock_code, start_date = left , end_date = right)
+    for d in quote:
+        terms = d.xpath('.//td//text()')
+        if len(terms) > 5:
+            if count == 0:
+                c_price = str(terms[5]).strip()
+            elif count == 1:
+                y_price = str(terms[5]).strip()
+            
+            count = count + 1
+            BBdata.append(float(str(terms[5]).strip()))
+            
+            if count == period:
+                break
+        else:
+            continue
 
-    data = np.array(list(price_BB[-period:]['Nominal Price']))
+    data = np.array(BBdata)
     mu = np.mean(data)
-    quote = price_BB[-1:]['Nominal Price']
-    if float(quote) >= np.mean(data):
+    if float(c_price) >= mu:
         u_d = 'up'
     else:
         u_d = 'down'
     
 
-    quote_yes = price_BB[-2:-1]['Nominal Price']
-    net_change = round(float(quote)-float(quote_yes),2)
-    change_per = round(100*(float(quote)-float(quote_yes))/float(quote_yes),2)
+    net_change = round(float(c_price)-float(y_price),2)
+    change_per = round(100*(float(c_price)-float(y_price))/float(y_price),2)
     sigma = np.std(data)
 
     upper = mu + 2*sigma
     down = mu - 2*sigma  
 
-    if float(quote) >= upper:
+    if float(c_price) >= upper:
         u_d_2 = 'up'
-    elif float(quote) <= down:
+    elif float(c_price) <= down:
         u_d_2 = 'down'
     else:
         u_d_2 = '-'
@@ -272,7 +288,7 @@ if __name__=="__main__":
         #print count
         last_date = str(current_date - timedelta(days = count))
 
-    x = pd.read_csv('tech_data/HK_Technical__'+ last_date[0:10] + '.csv')
+    x = pd.read_csv('tech_data/HK_Technical_'+ last_date[0:10] + '.csv')
 
     data = pd.DataFrame()
     cols=[]

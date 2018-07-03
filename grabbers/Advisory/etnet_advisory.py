@@ -50,8 +50,10 @@ def get_advisory(code):
 def get_index():
 
     url = "https://www.bloomberg.com/quote/HSI:IND/members"
-
-    response = requests.get(url)
+    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+    acceptEncoding = 'gzip, deflate, br'
+    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
     s=response.text
     parser = html.fromstring(s)
 
