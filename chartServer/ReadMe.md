@@ -1,6 +1,6 @@
-#ReadMe
+# ReadMe
 
-##python 
+## python 
 
 In python directory，there are some function that implement the api which in the ChartServices.md.  
 Requriements:
@@ -11,7 +11,7 @@ Run:
 
 
 
-##saveload_backend
+## saveload_backend
 
 It is the sample that search from the github that use for save the charts.
 The Database is use PostgreSQL and need to change the config.
