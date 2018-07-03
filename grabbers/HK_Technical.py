@@ -122,8 +122,8 @@ def get_option(code, underlying, price, x):
     c_u_d = ''
     if len(summary) > 0:
         #OI Volume  IV  Bid/Ask Last    Strike  Last    Bid/Ask IV  Volume  OI
-        index = x[(x.Code == code)].index.tolist()[0]
-        last_civ = x[index:index+1]['C.IV'].tolist()[0]
+        index = x[(x['Option Code'] == code)].index.tolist()[0]
+        last_civ = x[index:index+1]['IV(1C)'].tolist()[0]
         # last_piv = x[index:index+1]['P.IV'].tolist()[0]
 
         if summary[2]!='-' and float(summary[2]) < float(last_civ):
@@ -207,9 +207,14 @@ def get_BBands(code, lastdate, period = 20):
 def get_price(code):
     url = "https://www.bloomberg.com/quote/{0}:HK"
     url = url.format(code)
+    #print url
     #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-
-    response = requests.get(url)
+    #url = "https://www.bloomberg.com/quote/HSI:IND/members"
+    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+    acceptEncoding = 'gzip, deflate, br'
+    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
+    sleep(3)
     parser = html.fromstring(response.text)
 
     quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
@@ -225,15 +230,17 @@ def get_price(code):
 def get_index():
 
     url = "https://www.bloomberg.com/quote/HSI:IND/members"
-
-    response = requests.get(url)
+    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+    acceptEncoding = 'gzip, deflate, br'
+    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
     s=response.text
     parser = html.fromstring(s)
 
     index = parser.xpath('//div[@class="index-members"]/div[1]/div[@class="index-members"]/div[@class="security-summary"]')
 
     s_index = []
-
+    
     for mem in index:
         ticker = mem.xpath('.//a[contains(@class,"ticker")]//text()')
         temp = str(ticker[0])[:-3]
@@ -260,12 +267,12 @@ if __name__=="__main__":
 
     count = 1
     last_date = str(current_date - timedelta(days = count))
-    while((not os.path.exists('Option/data/HK_Option_'+ last_date[0:10] + '.csv')) and last_date[0:10]>='2018-06-01'):
+    while((not os.path.exists('tech_data/HK_Technical_'+ last_date[0:10] + '.csv')) and last_date[0:10]>='2018-06-01'):
         count = count + 1
         #print count
         last_date = str(current_date - timedelta(days = count))
 
-    x = pd.read_csv('Option/data/HK_Option_'+ last_date[0:10] + '.csv')
+    x = pd.read_csv('tech_data/HK_Technical__'+ last_date[0:10] + '.csv')
 
     data = pd.DataFrame()
     cols=[]
