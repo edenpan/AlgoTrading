@@ -1,5 +1,7 @@
 #ReadMe
+
 ##python 
+
 In python directory，there are some function that implement the api which in the ChartServices.md.  
 Requriements:
 python 2.x, flask.  
