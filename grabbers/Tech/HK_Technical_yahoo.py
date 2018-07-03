@@ -56,7 +56,7 @@ def get_code():
     return code, underlying  
 
 #get option trading info (at the money, 1 month)
-def get_option(code, underlying, price, x):
+def get_option(code, underlying, x):
 
     # response.find_element_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/em').click()
 
@@ -87,12 +87,13 @@ def get_option(code, underlying, price, x):
     # else:
     #     summary_data.update({'Expiry':'-'})
 
-    summary_data.update({'Closing':price})
+    
 
     if len(underlying)<4:
             underlying = (4-len(underlying))*'0' + underlying
 
-    mu,upper,down,u_d,net_change,change_per,u_d_2 = get_BBands(underlying, u_time, 20)
+    mu,upper,down,u_d,net_change,change_per,u_d_2,price = get_BBands(underlying, u_time, 20)
+    summary_data.update({'Closing':price})
     summary_data.update({'Net Change':net_change})
     summary_data.update({'Change(%)':change_per})
     
@@ -107,7 +108,7 @@ def get_option(code, underlying, price, x):
     diff = 9999
     #select at the money
     index = 0
-    if price != '-' and len(o_list)>0:
+    if price != 'N/A' and len(o_list)>0:
         for i in range(len(o_list)):
             s = o_list[i].xpath('./td[6]')[0].text
             #print s
@@ -216,31 +217,31 @@ def get_BBands(code, lastdate, period = 20):
     # price_data['NET POS'] = n_c.values
     # price_data['POS(%)'] = c_p.values
 
-    return mu,upper,down,u_d,net_change,change_per,u_d_2
+    return mu,upper,down,u_d,net_change,change_per,u_d_2,c_price
 
 
 #get underlying price (bloomberg) 
-def get_price(code):
-    url = "https://www.bloomberg.com/quote/{0}:HK"
-    url = url.format(code)
-    #print url
-    #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-    #url = "https://www.bloomberg.com/quote/HSI:IND/members"
-    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-    acceptEncoding = 'gzip, deflate, br'
-    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
-    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
-    sleep(3)
-    parser = html.fromstring(response.text)
+# def get_price(code):
+#     url = "https://www.bloomberg.com/quote/{0}:HK"
+#     url = url.format(code)
+#     #print url
+#     #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
+#     #url = "https://www.bloomberg.com/quote/HSI:IND/members"
+#     accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+#     acceptEncoding = 'gzip, deflate, br'
+#     user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+#     response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
+#     sleep(4)
+#     parser = html.fromstring(response.text)
 
-    quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
+#     quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
 
-    if len(quote) > 0:
-        price = str(quote[0]).strip()
-    else:
-        price = '-'
+#     if len(quote) > 0:
+#         price = str(quote[0]).strip()
+#     else:
+#         price = '-'
 
-    return price
+#     return price
 
 
 def get_index():
@@ -294,8 +295,8 @@ if __name__=="__main__":
     cols=[]
 
     for i in range(len(ol)):
-        price = get_price(sl[i])
-        summary_data = get_option(ol[i], sl[i], price, x)
+        #price = get_price(sl[i])
+        summary_data = get_option(ol[i], sl[i], x)
         if summary_data:
             print summary_data
             cols = summary_data.keys()

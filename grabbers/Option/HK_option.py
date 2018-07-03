@@ -51,13 +51,8 @@ def get_code():
 
     return code, underlying  
 
-#get option trading info (at the money, 1 month)
-def get_option(code, underlying, price):
+def get_option(code, underlying, x):
 
-    # response.find_element_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/em').click()
-
-    # x = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/ul/li[2]')
-    # x[0].click()
     url = "http://www.hkex.com.hk/market-data/futures-and-options-prices/single-stock/details?sc_lang=en&product={0}".format(code)
 
     chrome_options = Options()
@@ -66,14 +61,15 @@ def get_option(code, underlying, price):
     response = webdriver.Chrome(chrome_options=chrome_options)
 
     response.get(url)
-    sleep(4)
+    sleep(3)
     parser = html.fromstring(response.page_source)
 
     summary_data = OrderedDict()
 
     u_time = str(datetime.now())[0:10]
     summary_data.update({'Date':u_time})
-    summary_data.update({'Code':code})
+    summary_data.update({'Stock Code':underlying})
+    summary_data.update({'Option Code':code})
 
     ex = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/span')
     if len(ex) > 0:
@@ -81,21 +77,22 @@ def get_option(code, underlying, price):
         summary_data.update({'Expiry':expiry})
     else:
         summary_data.update({'Expiry':'-'})
+    
+    if len(underlying)<4:
+            underlying = (4-len(underlying))*'0' + underlying
 
-    summary_data.update({'Undelying':underlying})
+    price = get_price(underlying)
     summary_data.update({'Closing':price})
-
-
+    
     o_list = parser.xpath('//*[@id="option"]/tbody/tr')
 
     diff = 9999
     #select at the money
     index = 0
-    if price != '-' and len(o_list)>0:
+    if price != 'N/A' and len(o_list)>0:
         for i in range(len(o_list)):
             s = o_list[i].xpath('./td[6]')[0].text
-            #print s
-            #strike = s[0].text
+
             if abs(float(s) - float(price)) < diff:
                 diff = abs(float(s)-float(price))
                 index = i
@@ -115,36 +112,35 @@ def get_option(code, underlying, price):
         summary_data.update({'P.VOL':summary[9]})
         summary_data.update({'P.OI':summary[10]})
     else:
-        summary_data.clear()     
-        
+        summary_data.clear()
+     
+    return summary_data
 
-    return summary_data                           
-
-
-#get underlying price (bloomberg) 
 
 def get_price(code):
-    url = "https://www.bloomberg.com/quote/{0}:HK"
-    url = url.format(code)
-    #print url
-    #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-    #url = "https://www.bloomberg.com/quote/HSI:IND/members"
-    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-    acceptEncoding = 'gzip, deflate, br'
-    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
-    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
-    sleep(3)
+
+    code = code + '.HK'
+    url = "https://finance.yahoo.com/quote/%s/history?p=%s"%(code,code)
+    response = requests.get(url)
 
     parser = html.fromstring(response.text)
 
-    quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
 
-    if len(quote) > 0:
-        price = str(quote[0]).strip()
-    else:
-        price = '-'
+    quote = parser.xpath('//table[contains(@data-test,"historical-prices")]/tbody[1]/tr')
 
-    return price
+    count=0
+    c_price=''
+
+    for d in quote:
+        terms = d.xpath('.//td//text()')
+        if len(terms) > 5:
+            if count == 0:
+                c_price = str(terms[5]).strip()
+                break
+        else:
+            continue
+
+    return c_price
 
 
 def get_index():
