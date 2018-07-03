@@ -13,7 +13,7 @@ search	| return search result
 
 ## Get
 
-###/time
+### /time
 
 	GET 	/time
 	1530001150613
