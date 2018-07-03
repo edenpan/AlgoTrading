@@ -11,6 +11,10 @@ import pandas as pd
 from datetime import datetime
 import os
 
+import sys
+sys.path.insert(0,  '../util')
+import common
+
 def get_price(code):
    
     url = "https://www.google.com/finance?q=HKG:%s"%(code)
@@ -42,38 +46,11 @@ def get_price(code):
     summary_data.update({headers[6] : str(price[13]).strip()})
     summary_data.update({headers[7] : str(price[15]).strip()})
     summary_data.update({headers[8] : str(price[17]).strip()})
-
-
     return summary_data
-
-def get_index():
-
-    url = "https://www.bloomberg.com/quote/HSI:IND/members"
-
-    response = requests.get(url)
-    s=response.text
-    parser = html.fromstring(s)
-
-    index = parser.xpath('//div[@class="index-members"]/div[1]/div[@class="index-members"]/div[@class="security-summary"]')
-
-    s_index = []
-    i = 0
-
-    for mem in index:
-        ticker = mem.xpath('.//a[contains(@class,"ticker")]//text()')
-        temp = str(ticker[0])[:-3]
-        if len(temp)<4:
-            temp = (4-len(temp))*'0' + temp
-
-        s_index.append(temp)
-        i = i + 1
-
-    return s_index
-
 
 if __name__=="__main__":
     
-    index = get_index()
+    index = commom.get_index()
     HSI_price_data = pd.DataFrame()
     f_data = get_price(index[0])
     cols = f_data.keys()
