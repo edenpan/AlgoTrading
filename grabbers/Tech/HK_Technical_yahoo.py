@@ -100,7 +100,7 @@ def get_option(code, underlying, x):
     summary_data.update({'BBands M':round(mu,2)})
     summary_data.update({'BBands U':round(upper,2)})
     summary_data.update({'BBands D':round(down,2)})
-    summary_data.update({'U/D(mu)':u_d})
+    summary_data.update({'U/D(m)':u_d})
     summary_data.update({'U/D(B)':u_d_2})
 
     o_list = parser.xpath('//*[@id="option"]/tbody/tr')
@@ -111,19 +111,21 @@ def get_option(code, underlying, x):
     if price != 'N/A' and len(o_list)>0:
         for i in range(len(o_list)):
             s = o_list[i].xpath('./td[6]')[0].text
-            #print s
-            #strike = s[0].text
+
             if abs(float(s) - float(price)) < diff:
                 diff = abs(float(s)-float(price))
                 index = i
 
     summary = parser.xpath('//*[@id="option"]/tbody/tr[{0}]/td/text()'.format(index+1))
+
     c_u_d = ''
+    p_u_d = ''
+
     if len(summary) > 0:
         #OI Volume  IV  Bid/Ask Last    Strike  Last    Bid/Ask IV  Volume  OI
         index = x[(x['Option Code'] == code)].index.tolist()[0]
         last_civ = x[index:index+1]['IV(1C)'].tolist()[0]
-        # last_piv = x[index:index+1]['P.IV'].tolist()[0]
+        last_piv = x[index:index+1]['IV(1P)'].tolist()[0]
 
         if summary[2]!='-' and last_civ!='-' and float(summary[2].rstrip('%')) < float(last_civ.rstrip('%')):
             c_u_d = 'down'
@@ -132,15 +134,18 @@ def get_option(code, underlying, x):
         else:
             c_u_d = '-'
 
-        # if summary[8]!='-' and summary[2] < last_piv:
-        #     p_u_d = 'down'
-        # elif summary[8]!='-' and summary[2] >= last_piv
-        #     p_u_d = 'up'
-        # else:
-        #     p_u_d = '-'
+       	if summary[8]!='-' and last_piv!='-' and float(summary[8].rstrip('%')) < float(last_piv.rstrip('%')):
+            p_u_d = 'down'
+        elif summary[8]!='-' and last_piv!='-' and float(summary[8].rstrip('%')) >= float(last_piv.rstrip('%')):
+            p_u_d = 'up'
+        else:
+            p_u_d = '-'
+
 
         summary_data.update({'IV(1C)':summary[2]})
         summary_data.update({'U/D(1C)':c_u_d})
+        summary_data.update({'IV(1P)':summary[8]})
+        summary_data.update({'U/D(1P)':p_u_d})
 
         #summary_data.update({'IV(1P)':summary[8]})
     else:
@@ -210,38 +215,8 @@ def get_BBands(code, lastdate, period = 20):
     else:
         u_d_2 = '-'
 
-    # price_data['BBands M'] = mu.values
-    # price_data['BBands U'] = up.values
-    # price_data['BBands D'] = do.values
-    # price_data['UP/DOWN'] = pos.values
-    # price_data['NET POS'] = n_c.values
-    # price_data['POS(%)'] = c_p.values
 
     return mu,upper,down,u_d,net_change,change_per,u_d_2,c_price
-
-
-#get underlying price (bloomberg) 
-# def get_price(code):
-#     url = "https://www.bloomberg.com/quote/{0}:HK"
-#     url = url.format(code)
-#     #print url
-#     #user = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36"
-#     #url = "https://www.bloomberg.com/quote/HSI:IND/members"
-#     accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-#     acceptEncoding = 'gzip, deflate, br'
-#     user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
-#     response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
-#     sleep(4)
-#     parser = html.fromstring(response.text)
-
-#     quote = parser.xpath('//section[contains(@class,"snapshotSummary")]//section[contains(@class,"price")]//span[contains(@class,"priceText")]//text()')
-
-#     if len(quote) > 0:
-#         price = str(quote[0]).strip()
-#     else:
-#         price = '-'
-
-#     return price
 
 
 def get_index():
