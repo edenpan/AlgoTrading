@@ -153,11 +153,55 @@ def get_option(code, underlying, x):
         summary_data.update({'IV(1P)':summary[8]})
         summary_data.update({'U/D(1P)':p_u_d})
 
-        #summary_data.update({'IV(1P)':summary[8]})
+        r = 0.0015
+        q = 0.0424
+        Expiry = 30
+        T = (Expiry - int(str(datetime.now())[8:10].lstrip('0')))/365
+
+        percent = 0.01
+        price_delta = float(price)*percent
+
+        if summary[2] != '-':
+            c_delta = get_delta(float(price), float(summary[5]), r, q, float(summary[2].rstrip('%'))/100, T, 0)
+            C_prediction_u = float(summary[4]) + c_delta*price_delta
+            C_prediction_d = float(summary[4])
+        else:
+            C_prediction_u = '-'
+            C_prediction_d = '-'
+
+        
+        if summary[8] != '-':    
+            p_delta = get_delta(float(price), float(summary[5]), r, q, float(summary[8].rstrip('%'))/100, T, 1)
+            P_prediction_u = float(summary[6]) 
+            P_prediction_d = float(summary[6]) - p_delta*price_delta
+        else:
+            P_prediction_u = '-'
+            P_prediction_d = '-'
+        
+        summary_data.update({'Strike':summary[5]})
+        summary_data.update({'C.LAST':summary[4]})
+        summary_data.update({'C-pre(1d)':str(C_prediction_u)})
+        summary_data.update({'P.LAST':summary[6]})
+        summary_data.update({'P-pre(1d)':str(P_prediction_d)})
+
     else:
         summary_data.clear()
      
-    return summary_data                           
+    return summary_data  
+
+
+def get_delta(S, K, r, q, sigma, T, t_o):
+
+    d1 = (math.log(S/K) + (r - q + 0.5*(sigma**2))*T)/(sigma*math.sqrt(T))
+    if t_o == 0:
+
+        delta = math.exp(-1*q*T)*norm.cdf(d1)
+
+    else:
+        delta = math.exp(-1*q*T)*(norm.cdf(d1)-1)
+
+    return delta
+                         
 
 # get net position up/down, BBands(u,d,m) and up/down
 def get_BBands(code, lastdate, period = 20):
