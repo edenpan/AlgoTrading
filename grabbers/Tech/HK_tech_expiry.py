@@ -59,7 +59,7 @@ def get_code():
     return code, underlying  
 
 #get option trading info (at the money, 1 month)
-def get_option(code, underlying, data, u_time, x):
+def get_option(code, underlying, data, u_time):
 
     summary_data = OrderedDict()
 
@@ -109,22 +109,6 @@ def get_option(code, underlying, data, u_time, x):
     IV_1P = data[index_p].split()[8]
     Strike = data[index_c].split()[1]
 
-    index = x[(x['Option Code'] == code)].index.tolist()[0]
-    last_civ = x[index:index+1]['IV(1C)'].tolist()[0]
-    last_piv = x[index:index+1]['IV(1P)'].tolist()[0]
-
-    if float(IV_1C) < float(last_civ):
-        c_u_d = 'down'
-    elif float(IV_1C) > float(last_civ):
-        c_u_d = 'up'
-
-
-    if float(IV_1P) < float(last_piv):
-        p_u_d = 'down'
-    elif float(IV_1P) > float(last_piv):
-        p_u_d = 'up'
-
-
     S_C = data[index_c].split()[6]
     S_C_C = data[index_c].split()[7]
 
@@ -139,8 +123,8 @@ def get_option(code, underlying, data, u_time, x):
 
     r = 0.0015
     q = 0.0424
-    Expiry = 28
-    T = (Expiry - int(u_time[8:10].lstrip('0')))/365
+
+    T = 28
 
     percent = 0.01
     price_delta = float(price)*percent
@@ -335,55 +319,41 @@ if __name__=="__main__":
             ol.append(c)    
             sl.append(u)
 
-    #u_time_list = ['2018-05-21', '2018-05-23', '2018-05-24', '2018-05-25', '2018-05-28', '2018-05-29', '2018-05-30']
-    u_time_list = ['2018-06-01']
+    u_time = '2018-05-31'
 
-    for u_time in u_time_list:
-    
-        current_date = datetime.strptime(u_time,'%Y-%m-%d')
+    url = "http://www.hkex.com.hk/eng/stat/dmstat/dayrpt/dqe{0}.htm".format(u_time.replace("-", "")[2:])
 
-        count = 1
-        last_date = str(current_date - timedelta(days = count))
-        while((not os.path.exists('tech_data/HK_tech_'+ last_date[0:10] + '.csv')) and last_date[0:10]>='2018-01-01'):
-            count = count + 1
-            #print count
-            last_date = str(current_date - timedelta(days = count))
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    response = webdriver.Chrome(chrome_options=chrome_options)
 
-        x = pd.read_csv('tech_data/HK_tech_'+ last_date[0:10] + '.csv')
+    response.get(url)
+    sleep(5)
 
-        url = "http://www.hkex.com.hk/eng/stat/dmstat/dayrpt/dqe{0}.htm".format(u_time.replace("-", "")[2:])
+    data = pd.DataFrame()
+    cols=[]
 
-        chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--disable-gpu')
-        response = webdriver.Chrome(chrome_options=chrome_options)
+    for i in range(len(ol)):
+        #price = get_price(sl[i])
+        #try:
+        o_data = response.find_element_by_name(ol[i])
+        # except:
+        #     sleep(10)
+        #     o_data = response.find_element_by_name(ol[i])
 
-        response.get(url)
-        sleep(5)
+        o_data = o_data.text.encode('utf-8').split('\n')
+        summary_data = get_option(ol[i], sl[i], o_data, u_time)
+        if summary_data:
+            print summary_data
+            cols = summary_data.keys()
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
+            data = pd.concat([data, price_data], sort=True)
+              
+    if not os.path.exists('tech_data/'):
+        os.makedirs('tech_data/')
 
-        data = pd.DataFrame()
-        cols=[]
-
-        for i in range(len(ol)):
-            #price = get_price(sl[i])
-            #try:
-            o_data = response.find_element_by_name(ol[i])
-            # except:
-            #     sleep(10)
-            #     o_data = response.find_element_by_name(ol[i])
-
-            o_data = o_data.text.encode('utf-8').split('\n')
-            summary_data = get_option(ol[i], sl[i], o_data, u_time, x)
-            if summary_data:
-                print summary_data
-                cols = summary_data.keys()
-                price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-                data = pd.concat([data, price_data], sort=True)
-                  
-        if not os.path.exists('tech_data/'):
-            os.makedirs('tech_data/')
-
-        file_name = 'tech_data' + '/HK_tech_' + u_time
-        data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
+    file_name = 'tech_data' + '/HK_tech_' + u_time
+    data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
 
 
