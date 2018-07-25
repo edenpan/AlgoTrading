@@ -14,67 +14,69 @@ def get_price(code):
  
     url = "http://finance.yahoo.com/quote/%s?p=%s"%(code,code)
     response = requests.get(url)
-    sleep(2)
+    sleep(4)
     soup = BeautifulSoup(response.content, "lxml")
     script = soup.find("script",text=re.compile("root.App.main")).text
     data = loads(re.search("root.App.main\\s+=\\s+(\\{.*\\})", script).group(1))
-
+    summary_data = OrderedDict()
     # data.keys()
     # data['context'].keys()
     advisory_data = data['context']['dispatcher']['stores']['QuoteSummaryStore']['financialData']
+    if advisory_data:
+        if advisory_data['currentPrice']:
+            cur_price = advisory_data['currentPrice']['fmt'].encode('utf-8')
+        else:
+            cur_price = "-"
 
-    if advisory_data['currentPrice']:
-        cur_price = advisory_data['currentPrice']['fmt'].encode('utf-8')
-    else:
-        cur_price = "-"
+        if advisory_data['targetMeanPrice']:
+            avr_target = advisory_data['targetMeanPrice']['fmt'].encode('utf-8')
+        else:
+            avr_target = "-"
+            
+        if advisory_data['targetHighPrice']:
+            high_target = advisory_data['targetHighPrice']['fmt'].encode('utf-8')
+        else:
+            high_target = "-"
+            
+        if advisory_data['targetLowPrice']:
+            low_target = advisory_data['targetLowPrice']['fmt'].encode('utf-8')
+        else:
+            low_target = "-"
+            
+        if advisory_data['recommendationMean']:
+            rating = advisory_data['recommendationMean']['fmt'].encode('utf-8')
+        else:
+            rating = "-"    
+            
+        if advisory_data['recommendationKey']:
+            advise = advisory_data['recommendationKey'].encode('utf-8')
+        else:
+            advise = "-"
 
-    if advisory_data['targetMeanPrice']:
-        avr_target = advisory_data['targetMeanPrice']['fmt'].encode('utf-8')
-    else:
-        avr_target = "-"
+        # ROE = advisory_data['returnOnEquity']['fmt'].encode('utf-8')
+        # GrossMargin = advisory_data['grossMargins']['fmt'].encode('utf-8')
+        # NPM = advisory_data['profitMargins']['fmt'].encode('utf-8')
+
         
-    if advisory_data['targetHighPrice']:
-        high_target = advisory_data['targetHighPrice']['fmt'].encode('utf-8')
+
+        u_time = str(datetime.now())[0:10]
+        summary_data.update({'Date':u_time})
+        summary_data.update({'Symbol':code[0:4]})
+
+        summary_data.update({'Advisory':advise})
+        summary_data.update({'Rating(1-5)':rating})
+
+        summary_data.update({'Current price':cur_price})
+
+        summary_data.update({'Average Target price':avr_target})
+        summary_data.update({'Low Target Price':low_target})
+        summary_data.update({'High Target Price':high_target})
+
+        # summary_data.update({'ROE':ROE})
+        # summary_data.update({'GrossMargin':GrossMargin})
+        # summary_data.update({'NPM':NPM})
     else:
-        high_target = "-"
-        
-    if advisory_data['targetLowPrice']:
-        low_target = advisory_data['targetLowPrice']['fmt'].encode('utf-8')
-    else:
-        low_target = "-"
-        
-    if advisory_data['recommendationMean']:
-        rating = advisory_data['recommendationMean']['fmt'].encode('utf-8')
-    else:
-        rating = "-"    
-        
-    if advisory_data['recommendationKey']:
-        advise = advisory_data['recommendationKey'].encode('utf-8')
-    else:
-        advise = "-"
-
-    # ROE = advisory_data['returnOnEquity']['fmt'].encode('utf-8')
-    # GrossMargin = advisory_data['grossMargins']['fmt'].encode('utf-8')
-    # NPM = advisory_data['profitMargins']['fmt'].encode('utf-8')
-
-    summary_data = OrderedDict()
-
-    u_time = str(datetime.now())[0:10]
-    summary_data.update({'Date':u_time})
-    summary_data.update({'Symbol':code[0:4]})
-
-    summary_data.update({'Advisory':advise})
-    summary_data.update({'Rating(1-5)':rating})
-
-    summary_data.update({'Current price':cur_price})
-
-    summary_data.update({'Average Target price':avr_target})
-    summary_data.update({'Low Target Price':low_target})
-    summary_data.update({'High Target Price':high_target})
-
-    # summary_data.update({'ROE':ROE})
-    # summary_data.update({'GrossMargin':GrossMargin})
-    # summary_data.update({'NPM':NPM})
+        summary_data.clear()
 
     return summary_data
 
@@ -115,9 +117,10 @@ if __name__=="__main__":
     for code in index:
         code = code + '.HK'
         summary_data = get_price(code)
-        print summary_data
-        price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-        HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
+        if summary_data:
+            print summary_data
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
+            HSI_price_data = pd.concat([HSI_price_data, price_data], sort=True)
     
     u_time = str(datetime.now())[0:10]    
     if not os.path.exists('yahoo/'):

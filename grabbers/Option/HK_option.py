@@ -1,14 +1,21 @@
 #http://www.hkex.com.hk/Market-Data/Futures-and-Options-Prices/Single-Stock/Stock-Options?sc_lang=en#&sttype=options
-from pandas.io.json import json_normalize
-import pandas as pd
-from datetime import datetime
-from lxml import html  
-import requests
+from __future__ import division
+from datetime import datetime 
 from time import sleep
 from collections import OrderedDict
 import os
+from lxml import html  
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from datetime import timedelta
+import numpy as np
+import pandas as pd
+import math
+from scipy.stats import norm
+import quandl
+quandl.ApiConfig.api_key = 'FxbKCf83-WeNae8uyxQg'
+
 
 #get hk option code and their underlying 
 def get_code():
@@ -19,7 +26,7 @@ def get_code():
     chrome_options.add_argument('--disable-gpu')
     response = webdriver.Chrome(chrome_options=chrome_options)
     response.get(url)
-    sleep(4)
+    sleep(5)
     response.find_element_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[1]/span').click()
 
     l = response.find_elements_by_xpath('//*[@id="lhkexw-singlestocklanding"]/section/div[2]/div/div[3]/div[2]/div[2]/div')
@@ -51,157 +58,167 @@ def get_code():
 
     return code, underlying  
 
-def get_option(code, underlying, x):
-
-    url = "http://www.hkex.com.hk/market-data/futures-and-options-prices/single-stock/details?sc_lang=en&product={0}".format(code)
-
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    response = webdriver.Chrome(chrome_options=chrome_options)
-
-    response.get(url)
-    sleep(3)
-    parser = html.fromstring(response.page_source)
+#get option trading info (1 month)
+def get_option(code, underlying, o_data, u_time, expiry, data):
 
     summary_data = OrderedDict()
 
-    u_time = str(datetime.now())[0:10]
-    summary_data.update({'Date':u_time})
-    summary_data.update({'Stock Code':underlying})
-    summary_data.update({'Option Code':code})
+    #u_time = str(datetime.now())[0:10]
+    
+    #JUL18    44.00 C     m 0.00      0.00      0.00     23.40      -1.25   53          0           0            0
+    if len(underlying)<5:
+    	underlying = (5-len(underlying))*'0' + underlying
 
-    ex = response.find_elements_by_xpath('//*[@id="lhkexw-singlestockdetail"]/section/div[3]/div[1]/div[2]/div[1]/div[1]/div/div/div/span')
-    if len(ex) > 0:
-        expiry = ex[0].text.encode('utf-8')
-        summary_data.update({'Expiry':expiry})
+	price = get_price(underlying, u_time)
+
+    for i in range(len(o_data)):
+        w = o_data[i].split()
+
+        if len(w) == 12 and w[2] == 'C' and w[0] == expiry:       	
+
+            summary_data.update({'Date':u_time})
+            summary_data.update({'Stock Code':underlying})
+            summary_data.update({'Option Code':code})
+            summary_data.update({'Closing':price})
+
+            summary_data.update({'Expiry':w[0]})
+            summary_data.update({'Strike':w[1]})
+            summary_data.update({'Type':w[2]})
+            summary_data.update({'Open':w[3]})
+
+            summary_data.update({'High':w[4]})
+            summary_data.update({'Low':w[5]})
+            summary_data.update({'Settlement Price':w[6]})
+            summary_data.update({'Change':w[7]})
+
+            summary_data.update({'IV(%)':w[8]})
+            summary_data.update({'Volume':w[9]})
+            summary_data.update({'Open Interest':w[10]})
+            summary_data.update({'Change OI':w[11]})
+
+
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
+            data = pd.concat([data, price_data], sort=True)
+            print data
+            #summary_data.clear()
+
+        elif len(w) == 12 and w[2] == 'P' and w[0] == expiry:
+
+            summary_data.update({'Date':u_time})
+            summary_data.update({'Stock Code':underlying})
+            summary_data.update({'Option Code':code})
+            summary_data.update({'Closing':price})
+
+            summary_data.update({'Expiry':w[0]})
+            summary_data.update({'Strike':w[1]})
+            summary_data.update({'Type':w[2]})
+            summary_data.update({'Open':w[3]})
+
+            summary_data.update({'High':w[4]})
+            summary_data.update({'Low':w[5]})
+            summary_data.update({'Settlement Price':w[6]})
+            summary_data.update({'Change':w[7]})
+
+            summary_data.update({'IV(%)':w[8]})
+            summary_data.update({'Volume':w[9]})
+            summary_data.update({'Open Interest':w[10]})
+            summary_data.update({'Change OI':w[11]})
+
+
+            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
+            data = pd.concat([data, price_data], sort=True)
+            print data
+            #summary_data.clear()
+
+    return data                         
+
+
+def get_price(code, lastdate):
+
+    stock_code = 'HKEX/' + code
+
+    price_BB = quandl.get(stock_code, start_date = lastdate , end_date = lastdate)
+
+    quote = price_BB[-1:]['Nominal Price']
+    s='-'
+
+    if len(quote)>0:
+
+        return float(quote)
     else:
-        summary_data.update({'Expiry':'-'})
-    
-    if len(underlying)<4:
-            underlying = (4-len(underlying))*'0' + underlying
-
-    price = get_price(underlying)
-    summary_data.update({'Closing':price})
-    
-    o_list = parser.xpath('//*[@id="option"]/tbody/tr')
-
-    diff = 9999
-    #select at the money
-    index = 0
-    if price != 'N/A' and len(o_list)>0:
-        for i in range(len(o_list)):
-            s = o_list[i].xpath('./td[6]')[0].text
-
-            if abs(float(s) - float(price)) < diff:
-                diff = abs(float(s)-float(price))
-                index = i
-
-    summary = parser.xpath('//*[@id="option"]/tbody/tr[{0}]/td/text()'.format(index+1))
-    if len(summary) > 0:
-        #OI Volume  IV  Bid/Ask Last    Strike  Last    Bid/Ask IV  Volume  OI
-        summary_data.update({'C.OI':summary[0]})
-        summary_data.update({'C.VOL':summary[1]})
-        summary_data.update({'C.IV':summary[2]})
-        summary_data.update({'C.B/A':summary[3]})
-        summary_data.update({'C.LAST':summary[4]})
-        summary_data.update({'Strike':summary[5]})
-        summary_data.update({'P.LAST':summary[6]})
-        summary_data.update({'P.B/A':summary[7]})
-        summary_data.update({'P.IV':summary[8]})
-        summary_data.update({'P.VOL':summary[9]})
-        summary_data.update({'P.OI':summary[10]})
-    else:
-        summary_data.clear()
-     
-    return summary_data
-
-
-def get_price(code):
-
-    code = code + '.HK'
-    url = "https://finance.yahoo.com/quote/%s/history?p=%s"%(code,code)
-    response = requests.get(url)
-
-    parser = html.fromstring(response.text)
-
-
-    quote = parser.xpath('//table[contains(@data-test,"historical-prices")]/tbody[1]/tr')
-
-    count=0
-    c_price=''
-
-    for d in quote:
-        terms = d.xpath('.//td//text()')
-        if len(terms) > 5:
-            if count == 0:
-                c_price = str(terms[5]).strip()
-                break
-        else:
-            continue
-
-    return c_price
-
-
-def get_index():
-
-    url = "https://www.bloomberg.com/quote/HSI:IND/members"
-    accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
-    acceptEncoding = 'gzip, deflate, br'
-    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
-    response = requests.get(url,headers={"User-Agent":user_agent, "Accept":accept, "accept-encoding":acceptEncoding})
-    s=response.text
-    parser = html.fromstring(s)
-
-    index = parser.xpath('//div[@class="index-members"]/div[1]/div[@class="index-members"]/div[@class="security-summary"]')
-
-    s_index = []
-    
-    for mem in index:
-        ticker = mem.xpath('.//a[contains(@class,"ticker")]//text()')
-        temp = str(ticker[0])[:-3]
-        s_index.append(temp)
-  
-    return s_index
+        return s
 
 
 if __name__=="__main__":
 
 
     code, underlying = get_code()
-    index = get_index()
-    # print code
-    # print underlying
-    # print index
 
-    # sleep(3)
-    ol = []
-    sl = []
-    for c, u in zip(code, underlying):
-        if u in index:
-            ol.append(c)    
-            sl.append(u)
-    # print ol 
-    # print sl
-    # sleep(30)
-    Option_data = pd.DataFrame()
-    cols=[]
+    #to get historical raw option data, hard code
+    #time_list_5 = ['2018-04-30','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21','2018-05-21', '2018-05-23', '2018-05-24', '2018-05-25', '2018-05-28', '2018-05-29', '2018-05-30']
+    #expiry_5 = ['2018-05-31']
+    #u_time_list = ['2018-06-01']
 
-    for i in range(len(ol)):
-
-        price = get_price(sl[i])
-        summary_data = get_option(ol[i], sl[i], price)
-        if summary_data:
-            print summary_data
-            cols = summary_data.keys()
-            price_data = pd.DataFrame.from_dict(summary_data, orient='index').T       
-            Option_data = pd.concat([Option_data, price_data], sort=True)
     
-    u_time = str(datetime.now())[0:10]           
-    if not os.path.exists('data/'):
-        os.makedirs('data/')
+    #u_time = str(datetime.now())[0:10]
+    expiry_list = [0,0,'MAR19',0,'MAY18','JUN18','JUL18','AUG18','SEP18','OCT18',0,0]
+    #for u_time in u_time_list:
+    special_list = ['2018-05-31', '2018-06-29', '2018-07-31']
 
-    file_name = 'data' + '/HK_Option_' + u_time
-    Option_data.to_csv(file_name + '.csv', sep=',', na_rep='N/A', columns=cols, index=False)
+    #current_date = datetime.strptime(u_time,'%Y-%m-%d')
+
+    #last_date = str(current_date - timedelta(days = 1))
+    #u_time = last_date[0:10]    
+
+    #time_list_7 = ['2018-06-29','2018-07-03','2018-07-04','2018-07-05','2018-07-06','2018-07-09','2018-07-10','2018-07-11','2018-07-12','2018-07-13']
+    
+    time_list_7 = ['2018-07-12']
+    for u_time in time_list_7:
+        
+        url = "http://www.hkex.com.hk/eng/stat/dmstat/dayrpt/dqe{0}.htm".format(u_time.replace("-", "")[2:])
+
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--disable-gpu')
+        response = webdriver.Chrome(chrome_options=chrome_options)
+
+        response.get(url)
+        sleep(2)
+
+        data = pd.DataFrame()
+        cols=['Date','Stock Code','Option Code','Closing','Expiry','Strike','Type','Open','High','Low','Settlement Price','Change', 'IV(%)','Volume','Open Interest','Change OI']
+
+        if not os.path.exists('data/'+ u_time):
+            os.makedirs('data/'+ u_time)
+
+        for i in range(len(code)):
+            m = int(u_time[5:7].lstrip('0'))
+            if m in special_list:
+                expiry = expiry_list[m]
+            else:
+                expiry = expiry_list[m-1]
+
+            try:
+                o_data = response.find_element_by_name(code[i])
+            except:
+                continue
+
+            o_data = o_data.text.encode('utf-8').split('\n')
+            summary_data = get_option(code[i], underlying[i], o_data, u_time, expiry, data) 
+            if not summary_data.empty:
+                file_name = 'data/' + u_time + '/HK_option_1m_'+ code[i] + '_' + u_time
+                summary_data.to_csv(file_name + '.csv', sep=',', columns=cols, index=False)    
+
+
+
+
+
+
+
+
+
+
+
+
 
 
