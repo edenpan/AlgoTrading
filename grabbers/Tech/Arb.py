@@ -7,7 +7,7 @@ import os
 def arbitrage(begin, end, number = 5):
 	
 	Pnl = []
-	special_list = ['2018-05-30', '2018-06-28', '2018-07-31']
+	special_list = ['2018-04-27', '2018-05-30', '2018-06-28', '2018-07-30']
 
 	while begin != end:
 
@@ -17,7 +17,7 @@ def arbitrage(begin, end, number = 5):
 			#choose most 10 mispricing call options
 			settle_c = np.array(data['Settle(1C)'].tolist())
 			t_p_c =  np.array(data['T-P(S,1C)'].tolist())
-
+			
 			diff = settle_c - t_p_c
 
 			sort_index = np.argsort(diff)
@@ -91,7 +91,7 @@ def arbitrage(begin, end, number = 5):
 			next_date = str(current_date + timedelta(days = count))
 			while((not os.path.exists('tech_data/HK_tech_'+ next_date[0:10] + '.csv')) and next_date[0:10]<='2018-10-01'):
 				count = count + 1
-		   	#print count
+		   	
 				next_date = str(current_date + timedelta(days = count))
 
 			begin = next_date[0:10]
